@@ -2,13 +2,14 @@
 nose_json.plugin
 ~~~~~~~~~~~~~~~~
 
-:copyright: 2012 DISQUS.
+:copyright: 2012 DISQUS, 2014 Cumulus Networks, Inc
 :license: BSD
 """
 import codecs
 import os
 import simplejson
 import traceback
+import datetime
 from time import time
 from nose.exc import SkipTest
 from nose.plugins import Plugin
@@ -76,6 +77,25 @@ class JsonReportPlugin(Plugin):
     def startTest(self, test):
         self._timer = time()
 
+    def findDoc(self, test, name):
+        curr_test_obj = test
+        while hasattr(curr_test_obj, 'test'):
+            curr_test_obj = curr_test_obj.test
+        if hasattr(curr_test_obj, name):
+            curr_test_obj = getattr(curr_test_obj, name)
+        return curr_test_obj.__doc__
+
+    def findTags(self, test, name):
+        curr_test_obj = test
+        while hasattr(curr_test_obj, 'test'):
+            curr_test_obj = curr_test_obj.test
+        if hasattr(curr_test_obj, 'tags'):
+            return curr_test_obj.tags
+        if hasattr(curr_test_obj, name):
+            curr_test_obj = getattr(curr_test_obj, name)
+            if hasattr(curr_test_obj, 'tags'):
+                return curr_test_obj.tags
+
     def addError(self, test, err, capt=None):
         taken = self._get_time_taken()
 
@@ -86,39 +106,53 @@ class JsonReportPlugin(Plugin):
             type = 'error'
             self.stats['errors'] += 1
         tb = ''.join(traceback.format_exception(*err))
-        id = test.id()
+        test_id = test.id()
+        name = id_split(test_id)[-1]
         self.results.append({
-            'classname': ':'.join(id_split(id)[0].rsplit('.', 1)),
-            'name': id_split(id)[-1],
+            'id': test_id,
+            'name': name,
             'time': taken,
+            'tags': self.findTags(test, name),
+            'doc': self.findDoc(test, name),
             'type': type,
             'errtype': nice_classname(err[0]),
-            'message': exc_message(err),
-            'tb': tb,
+            'ts': datetime.datetime.utcnow().isoformat(),
+            # Too much text gets put here, can make our documents too big.
+            #'message': exc_message(err),
+            #'tb': tb,
         })
 
     def addFailure(self, test, err, capt=None, tb_info=None):
         taken = self._get_time_taken()
         tb = ''.join(traceback.format_exception(*err))
         self.stats['failures'] += 1
-        id = test.id()
+        test_id = test.id()
+        name = id_split(test_id)[-1]
         self.results.append({
-            'classname': ':'.join(id_split(id)[0].rsplit('.', 1)),
-            'name': id_split(id)[-1],
+            'id': test_id,
+            'name': name,
             'time': taken,
+            'tags': self.findTags(test, name),
+            'doc': self.findDoc(test, name),
             'type': 'failure',
             'errtype': nice_classname(err[0]),
-            'message': exc_message(err),
-            'tb': tb,
+            'ts': datetime.datetime.utcnow().isoformat(),
+            # Too much text gets put here, can make our documents too big.
+            #'message': exc_message(err),
+            #'tb': tb,
         })
 
     def addSuccess(self, test, capt=None):
         taken = self._get_time_taken()
         self.stats['passes'] += 1
-        id = test.id()
+        test_id = test.id()
+        name = id_split(test_id)[-1]
         self.results.append({
-            'classname': ':'.join(id_split(id)[0].rsplit('.', 1)),
-            'name': id_split(id)[-1],
+            'id': test_id,
+            'name': name,
             'time': taken,
+            'tags': self.findTags(test, name),
+            'doc': self.findDoc(test, name),
+            'ts': datetime.datetime.utcnow().isoformat(),
             'type': 'success',
         })
