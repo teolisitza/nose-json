@@ -47,6 +47,7 @@ class JsonReportPlugin(Plugin):
         if not self.enabled:
             return
 
+        self.start_time = datetime.datetime.utcnow().isoformat()
         self.stats = {
             'errors': 0,
             'failures': 0,
@@ -64,6 +65,7 @@ class JsonReportPlugin(Plugin):
         self.report_output = report_output
 
     def report(self, stream):
+        self.end_time = datetime.datetime.utcnow().isoformat()
         self.stats['encoding'] = self.encoding
         self.stats['total'] = (self.stats['errors'] + self.stats['failures']
                                + self.stats['passes'] + self.stats['skipped'])
@@ -71,6 +73,8 @@ class JsonReportPlugin(Plugin):
         with codecs.open(self.report_output, 'w', self.encoding, 'replace') as fp:
             fp.write(simplejson.dumps({
                 'stats': self.stats,
+                'start_time': self.start_time,
+                'end_time': self.end_time,
                 'results': self.results,
             }))
 
