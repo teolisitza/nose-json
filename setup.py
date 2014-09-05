@@ -7,11 +7,11 @@ tests_require = [
 
 setup(
     name='nose-json',
-    version='0.2.5',
-    author='David Cramer',
-    author_email='dcramer@gmail.com',
+    version='0.2.6',
+    author='Teo Lisitza',
+    author_email='teo@cumulusnetworks.com',
     description='A JSON report plugin for Nose.',
-    url='http://github.com/dcramer/nose-json',
+    url='http://github.com/teolisitza/nose-json',
     packages=find_packages(exclude=["tests"]),
     zip_safe=False,
     install_requires=[
