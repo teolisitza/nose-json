@@ -10,6 +10,7 @@ import os
 import simplejson
 import traceback
 import datetime
+import re
 from time import time
 from nose.exc import SkipTest
 from nose.plugins import Plugin
@@ -112,6 +113,7 @@ class JsonReportPlugin(Plugin):
         tb = ''.join(traceback.format_exception(*err))
         test_id = test.id()
         name = id_split(test_id)[-1]
+        output = self._scrap_data_(exc_message(err))
         self.results.append({
             'id': test_id,
             'name': name,
@@ -124,6 +126,8 @@ class JsonReportPlugin(Plugin):
             # Too much text gets put here, can make our documents too big.
             #'message': exc_message(err),
             #'tb': tb,
+            'message' : output['summary'],
+            'tb' : output['detail'],
         })
 
     def addFailure(self, test, err, capt=None, tb_info=None):
@@ -132,6 +136,7 @@ class JsonReportPlugin(Plugin):
         self.stats['failures'] += 1
         test_id = test.id()
         name = id_split(test_id)[-1]
+        output = self._scrap_data_(exc_message(err))
         self.results.append({
             'id': test_id,
             'name': name,
@@ -144,6 +149,8 @@ class JsonReportPlugin(Plugin):
             # Too much text gets put here, can make our documents too big.
             #'message': exc_message(err),
             #'tb': tb,
+            'message' : output['summary'],
+            'tb' : output['detail'],
         })
 
     def addSuccess(self, test, capt=None):
@@ -160,3 +167,37 @@ class JsonReportPlugin(Plugin):
             'ts': datetime.datetime.utcnow().isoformat(),
             'type': 'success',
         })
+
+    def _scrap_data_(self, buf):
+        lines = buf.splitlines()
+        top_info = False
+        info = {'summary': [],
+                'detail' : []}
+
+        for ln in lines:
+            if re.findall('\S+.* begin', ln):
+                top_info = True
+
+            # Capture the initial lines in the output till you see
+            # "begin capture" in the line
+            if not(top_info):
+                info['summary'].append(ln)
+
+            # Don't capture and information until we see the "Error" and then
+            # capture all the traceback info until we see the node cleaning up
+            # TODO: need to handle the case where we see a core or WARN/ERR/CRIT
+            #       msg
+            if (len(info['detail']) > 0) and not('tests.lib.decorators: INFO:' in ln):
+                info['detail'].append(ln)
+            elif (len(info['detail']) > 0) and ('tests.lib.decorators: INFO:' in ln):
+                break
+
+            if re.findall('tests.lib.decorators: ERROR:.*', ln) and \
+               top_info:
+                info['detail'].append(ln)
+
+        # Return a string instead of a list of strings
+        info['summary'] = "\n".join(info["summary"])
+        info['detail'] = "\n".join(info["detail"])
+
+        return info
